@@ -2,7 +2,7 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-replicaCount: 2
+replicaCount: 1
 
 clusterDomain: cluster.local
 
@@ -114,9 +114,15 @@ statefulset:
 
 persistence:
   enabled: true
-  existingClaim: gitea-data-test
+  # existingClaim:
+  size: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  labels: {}
+  annotations: {}
   # storageClass:
   # subPath:
+
 
 # additional volumes to add to the Gitea statefulset.
 extraVolumes:
@@ -244,6 +250,17 @@ memcached:
   enabled: true
   service:
     port: 11211
+
+redis:
+  enabled: false
+  global:
+    redis:
+      password: gitea
+  master:
+    service:
+      port: 6379
+  replica:
+    replicaCount: 2
 
 redis-cluster:
   enabled: false
