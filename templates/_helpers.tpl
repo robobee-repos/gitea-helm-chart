@@ -66,6 +66,8 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- define "db.servicename" -}}
 {{- if .Values.postgresql.enabled -}}
 {{- printf "%s-postgresql" .Release.Name -}}
+{{- else if (index .Values "postgresql-ha").enabled -}}
+{{- printf "%s-postgresql-ha-pgpool" .Release.Name -}}
 {{- else if .Values.mysql.enabled -}}
 {{- printf "%s-mysql" .Release.Name -}}
 {{- else if .Values.mariadb.enabled -}}
@@ -79,6 +81,8 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- define "db.port" -}}
 {{- if .Values.postgresql.enabled -}}
 {{ .Values.postgresql.global.postgresql.servicePort }}
+{{- else if (index .Values "postgresql-ha").enabled -}}
+{{ (index .Values "postgresql-ha").service.port }}
 {{- else if .Values.mysql.enabled -}}
 {{ .Values.mysql.service.port }}
 {{- else if .Values.mariadb.enabled -}}
@@ -88,7 +92,11 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
 
 {{- define "postgresql.dns" -}}
+{{- if .Values.postgresql.enabled -}}
 {{- printf "%s-postgresql.%s.svc.%s:%g" .Release.Name .Release.Namespace .Values.clusterDomain .Values.postgresql.global.postgresql.servicePort -}}
+{{- else if (index .Values "postgresql-ha").enabled -}}
+{{- printf "%s-postgresql-ha-pgpool.%s.svc.%s:%g" .Release.Name .Release.Namespace .Values.clusterDomain (index .Values "postgresql-ha").service.port -}}
+{{- end -}}
 {{- end -}}
 
 {{- define "mysql.dns" -}}
@@ -101,6 +109,10 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 
 {{- define "memcached.dns" -}}
 {{- printf "%s-memcached.%s.svc.%s:%g" .Release.Name .Release.Namespace .Values.clusterDomain .Values.memcached.service.port | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{- define "redis.dns" -}}
+{{- printf "redis://%s-redis-cluster.%s.svc.%s:%g/0?pool_size=100&idle_timeout=180s" .Release.Name .Release.Namespace .Values.clusterDomain (index .Values "redis-cluster").service.port -}}
 {{- end -}}
 
 {{- define "gitea.default_domain" -}}
