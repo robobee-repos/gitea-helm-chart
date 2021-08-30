@@ -125,3 +125,4 @@ stringData:
     fi
 
     environment-to-ini -o $GITEA_APP_INI -p ENV_TO_INI
+    
