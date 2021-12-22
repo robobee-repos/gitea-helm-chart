@@ -239,6 +239,18 @@ app.kubernetes.io/instance: {{ .Release.Name }}
   {{- if not (hasKey .Values.gitea.config "oauth2") -}}
     {{- $_ := set .Values.gitea.config "oauth2" dict -}}
   {{- end -}}
+  {{- if not (hasKey .Values.gitea.config "session") -}}
+    {{- $_ := set .Values.gitea.config "session" dict -}}
+  {{- end -}}
+  {{- if not (hasKey .Values.gitea.config "queue") -}}
+    {{- $_ := set .Values.gitea.config "queue" dict -}}
+  {{- end -}}
+  {{- if not (hasKey .Values.gitea.config "queue.issue_indexer") -}}
+    {{- $_ := set .Values.gitea.config "queue.issue_indexer" dict -}}
+  {{- end -}}
+  {{- if not (hasKey .Values.gitea.config "indexer") -}}
+    {{- $_ := set .Values.gitea.config "indexer" dict -}}
+  {{- end -}}
 {{- end -}}
 
 {{- define "gitea.inline_configuration.defaults" -}}
@@ -254,12 +266,23 @@ app.kubernetes.io/instance: {{ .Release.Name }}
   {{- if not (hasKey .Values.gitea.config.metrics "ENABLED") -}}
     {{- $_ := set .Values.gitea.config.metrics "ENABLED" .Values.gitea.metrics.enabled -}}
   {{- end -}}
-  {{- if .Values.memcached.enabled -}}
+  {{- if or .Values.memcached.enabled (index .Values "redis-cluster").enabled .Values.redis.enabled -}}
     {{- $_ := set .Values.gitea.config.cache "ENABLED" "true" -}}
-    {{- $_ := set .Values.gitea.config.cache "ADAPTER" "memcache" -}}
+    {{- $_ := set .Values.gitea.config.cache "ADAPTER" (ternary "memcache" "redis" .Values.memcached.enabled) -}}
     {{- if not (.Values.gitea.config.cache.HOST) -}}
-      {{- $_ := set .Values.gitea.config.cache "HOST" (include "memcached.dns" .) -}}
+      {{- $_ := set .Values.gitea.config.cache "HOST" (ternary (include "memcached.dns" .) (include "redis.dns" .) .Values.memcached.enabled) -}}
     {{- end -}}
+  {{- end -}}
+  {{- /* redis queue */ -}}
+  {{- if or (index .Values "redis-cluster").enabled  .Values.redis.enabled -}}
+    {{- $_ := set .Values.gitea.config.queue "TYPE" "redis" -}}
+    {{- $_ := set .Values.gitea.config.queue "CONN_STR" (include "redis.dns" .) -}}
+    {{- $_ := set (index .Values.gitea.config "queue.issue_indexer") "TYPE" "redis" -}}
+  {{- end -}}
+  {{- /* multiple replicas */ -}}
+  {{- if gt .Values.replicaCount 1.0 -}}
+    {{- $_ := set .Values.gitea.config.session  "PROVIDER" "redis" -}}
+    {{- $_ := set .Values.gitea.config.session  "PROVIDER_CONFIG" (include "redis.dns" .) -}}
   {{- end -}}
 {{- end -}}
 
@@ -323,6 +346,14 @@ app.kubernetes.io/instance: {{ .Release.Name }}
     {{- $_ := set .Values.gitea.config.database "NAME"      .Values.postgresql.global.postgresql.postgresqlDatabase -}}
     {{- $_ := set .Values.gitea.config.database "USER"      .Values.postgresql.global.postgresql.postgresqlUsername -}}
     {{- $_ := set .Values.gitea.config.database "PASSWD"    .Values.postgresql.global.postgresql.postgresqlPassword -}}
+  {{- else if (index .Values "postgresql-ha").enabled -}}
+    {{- $_ := set .Values.gitea.config.database "DB_TYPE"   "postgres" -}}
+    {{- if not (.Values.gitea.config.database.HOST) -}}
+      {{- $_ := set .Values.gitea.config.database "HOST"      (include "postgresql.dns" .) -}}
+    {{- end -}}
+    {{- $_ := set .Values.gitea.config.database "NAME"      (index .Values "postgresql-ha").global.postgresql.database -}}
+    {{- $_ := set .Values.gitea.config.database "USER"      (index .Values "postgresql-ha").global.postgresql.username -}}
+    {{- $_ := set .Values.gitea.config.database "PASSWD"    (index .Values "postgresql-ha").global.postgresql.password -}}
   {{- else if .Values.mysql.enabled -}}
     {{- $_ := set .Values.gitea.config.database "DB_TYPE"   "mysql" -}}
     {{- if not (.Values.gitea.config.database.HOST) -}}
