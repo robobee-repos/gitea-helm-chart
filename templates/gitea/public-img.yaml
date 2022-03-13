@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "gitea.fullname" . }}-public-img
+  labels:
+    {{- include "gitea.labels" . | nindent 4 }}
+type: Opaque
+data:
+{{- range $path, $_ := .Files.Glob "files/public/img/*.svg" }}
+  {{ base $path }}: {{ $.Files.Get $path | b64enc }}
+{{- end }}
+{{- range $path, $_ := .Files.Glob "files/public/img/*.png" }}
+  {{ base $path }}: {{ $.Files.Get $path | b64enc }}
+{{- end }}

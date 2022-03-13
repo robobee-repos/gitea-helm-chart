@@ -269,6 +269,18 @@ spec:
               {{- if .Values.persistence.subPath }}
               subPath: {{ .Values.persistence.subPath }}
               {{- end }}
+
+            {{- range $path, $_ := .Files.Glob "files/public/img/*.svg" }}
+            - name: public-img
+              mountPath: {{ print "/data/gitea/public/img/" (base $path) }}
+              subPath: {{ base $path }}
+            {{- end }}
+            {{- range $path, $_ := .Files.Glob "files/public/img/*.png" }}
+            - name: public-img
+              mountPath: {{ print "/data/gitea/public/img/" (base $path) }}
+              subPath: {{ base $path }}
+            {{- end }}
+             
             {{- if .Values.extraVolumeMounts }}
             {{- toYaml .Values.extraVolumeMounts | nindent 12 }}
             {{- end }}
@@ -292,6 +304,10 @@ spec:
         - name: config
           secret:
             secretName: {{ include "gitea.fullname" . }}
+            defaultMode: 110
+        - name: public-img
+          secret:
+            secretName: {{ include "gitea.fullname" . }}-public-img
             defaultMode: 110
         {{- if .Values.extraVolumes }}
         {{- toYaml .Values.extraVolumes | nindent 8 }}
